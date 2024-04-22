@@ -1,15 +1,20 @@
+import Utils.CommandExecuter;
+import Utils.Constants;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
-import java.util.List; // Added import for List
+import java.util.List;
+import java.util.logging.*;
 
 public class Main {
 
     private JFrame frame;
     private JTextArea log;
     private JTextField apkInput;
+    private Logger logger;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
@@ -34,7 +39,7 @@ public class Main {
         log.setEditable(false);
         log.setAutoscrolls(true);
 
-        JButton sideload = new JButton("Sideload APK"); // Changed Button to JButton
+        JButton sideload = new JButton("Sideload APK");
         sideload.addActionListener(new SideloadButtonListener());
 
         frame.add(log);
@@ -42,25 +47,46 @@ public class Main {
         frame.add(sideload);
 
         frame.setVisible(true);
+
+        // Initialize logger
+        logger = Logger.getLogger(Main.class.getName());
+        TextAreaHandler handler = new TextAreaHandler(log);
+        handler.setLevel(Level.ALL);
+        handler.setFormatter(new SimpleFormatter() {
+            @Override
+            public synchronized String format(LogRecord lr) {
+                return lr.getMessage() + "\n";
+            }
+        });
+        logger.addHandler(handler);
     }
 
     private class SideloadButtonListener implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            sideload();
+            if (Constants.OS().toLowerCase().contains("win")) {
+                //sideloadWin();
+                //TODO: Write Sideload function for Windows
+            } else if (Constants.OS().toLowerCase().contains("lin") ||
+                    Constants.OS().toLowerCase().contains("un")) {
+                sideload();
+            } else {
+                logger.log(Level.WARNING, "Unsupported OS : " + Constants.OS());
+            }
         }
     }
 
+    //TODO: Make actual logging instead of displaying all at once
     public void sideload() {
-        log.append("Trying: " + apkInput.getText() + "\n");
+        logger.log(Level.INFO, "Trying: " + apkInput.getText());
 
         if (apkInput.getText().toLowerCase().endsWith(".apk")) {
 
-            log.append("Path is valid!");
+            logger.log(Level.INFO, "Path is valid!");
 
             if (apkInput.getText().startsWith("http")) {
                 apkInput.setText("");
-                log.append("Downloading APK …");
+                logger.log(Level.INFO, "Downloading APK …");
                 return;
             }
 
@@ -68,26 +94,60 @@ public class Main {
 
             if (apkFile.exists()) {
                 List<String> adbDevicesOutput = CommandExecuter.executeBash("adb devices | head -n 2 | tail -n 1");
-                log.append("\nSideloading " + apkFile + " to\n " + adbDevicesOutput.get(0));
+                logger.log(Level.INFO, "Sideloading " + apkFile + " to\n " + adbDevicesOutput.get(0));
                 apkInput.setText("");
-                log.append("\nADB Log ----------------------------");
+                logger.log(Level.INFO, "ADB Log ----------------------------");
 
-                List<String> adbInstallOutput = CommandExecuter.executeBash("adb install " + apkFile);
+                // Update log as adb install command is executed
+                logger.log(Level.INFO, "Installing APK...");
+                List<String> adbInstallOutput = CommandExecuter.executeBash("adb install '" + apkFile + "'");
                 for (String line : adbInstallOutput) {
-                    log.append("\n" + line);
+                    logger.log(Level.INFO, line);
                 }
 
-                log.append("\n-----------------------------------------");
-                log.append("\nDone");
+                logger.log(Level.INFO, "-----------------------------------------");
+                logger.log(Level.INFO, "Done");
                 return;
             }
 
-            log.append("\nERROR: APK cannot be found!");
+            logger.log(Level.SEVERE, "ERROR: APK cannot be found!");
             apkInput.setText("");
-            log.append("\n========================================");
+            logger.log(Level.INFO, "========================================");
             return;
         }
 
-        log.append("ERROR: APK cannot be found!");
+        logger.log(Level.SEVERE, "ERROR: APK cannot be found!");
+    }
+
+    // Custom handler to append log messages to JTextArea
+    private static class TextAreaHandler extends Handler {
+        private JTextArea textArea;
+        private Formatter formatter = new SimpleFormatter();
+
+        TextAreaHandler(JTextArea textArea) {
+            this.textArea = textArea;
+        }
+
+        @Override
+        public void publish(LogRecord record) {
+            String message = formatter.format(record);
+            SwingUtilities.invokeLater(() -> textArea.append(message));
+        }
+
+        @Override
+        public void setFormatter(Formatter newFormatter) {
+            formatter = newFormatter;
+        }
+
+        @Override
+        public Formatter getFormatter() {
+            return formatter;
+        }
+
+        @Override
+        public void flush() {}
+
+        @Override
+        public void close() throws SecurityException {}
     }
 }
