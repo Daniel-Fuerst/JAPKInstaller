@@ -67,12 +67,12 @@ public class Main {
             File apkFile = new File(apkInput.getText());
 
             if (apkFile.exists()) {
-                List<String> adbDevicesOutput = CommandExecuter.execute("adb devices | head -n 2 | tail -n 1");
+                List<String> adbDevicesOutput = CommandExecuter.executeBash("adb devices | head -n 2 | tail -n 1");
                 log.append("\nSideloading " + apkFile + " to\n " + adbDevicesOutput.get(0));
                 apkInput.setText("");
                 log.append("\nADB Log ----------------------------");
 
-                List<String> adbInstallOutput = CommandExecuter.execute("adb install " + apkFile);
+                List<String> adbInstallOutput = CommandExecuter.executeBash("adb install " + apkFile);
                 for (String line : adbInstallOutput) {
                     log.append("\n" + line);
                 }
