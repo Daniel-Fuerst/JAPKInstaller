@@ -35,10 +35,8 @@ public class CommandExecuter {
         String command = "ls -l; echo 'Hello, multi-line commands!';";
         List<String> result = execute(command);
 
-        // Iterate over the result and do something with each line
         for (String line : result) {
             System.out.println("Result line: " + line);
-            // Add your logic here, like appending to your log
         }
     }
 }
